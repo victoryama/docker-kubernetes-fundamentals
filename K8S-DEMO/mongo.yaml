@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: #metadata section
+  name: mongo-deployment
+  labels:
+    app: mongo
+spec: #specification section, Deployment specific specification   
+  replicas: 1 #how many pods to create with this blueprint, 1 because is a database in a deployment
+  selector: #selector/label selector identify which pods belong to which deployments
+    matchLabels: #defines that all the pods that match this label belong to this deployment
+      app: mongo #practice to use app key, value is the application you have
+  template: #blueprint for Pods, configure the Pod whitin a deployment
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers: #defines which image will be used to create this pod
+      - name: mongodb
+        image: mongo:5.0 #define image of the container of the pod
+        ports: 
+        - containerPort: 27017 #port where the container will listen, defined in dockerhub 
+        env: #pass the environment variables to mongo applicaiton, list of environment variables with names and values 
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef: #kubernetes will find the a secret with this name and get the value set
+              name: mongo-secret
+              key: mongo-user #value: MONGO_INITDB_PASSWORD #can be direct set as the username, or reference from secret and config components ##secret config file should not be checked into git repo
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: mongo-secret
+              key: mongo-password
+--- #separating service from deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+spec:
+  selector:
+    app: mongo #select pods to forward the resquests to 
+  ports:
+    - protocol: TCP
+      port: 27017 #service port
+      targetPort: 27017 #port of the pods, belong to the service, which port it should foward the request to the pods, should be the same as the containerport
